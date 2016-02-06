@@ -21,47 +21,133 @@
 
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Reflection;
 using YamlDotNet.Core;
-using YamlDotNet.Serialization.Utilities;
 
 namespace YamlDotNet.Serialization.NodeDeserializers
 {
-	public sealed class ArrayNodeDeserializer : INodeDeserializer
-	{
-		bool INodeDeserializer.Deserialize(EventReader reader, Type expectedType, Func<EventReader, Type, object> nestedObjectDeserializer, out object value)
-		{
-			if (!expectedType.IsArray)
-			{
-				value = false;
-				return false;
-			}
+    public sealed class ArrayNodeDeserializer : INodeDeserializer
+    {
+        bool INodeDeserializer.Deserialize(EventReader reader, Type expectedType, Func<EventReader, Type, object> nestedObjectDeserializer, out object value)
+        {
+            if (!expectedType.IsArray)
+            {
+                value = false;
+                return false;
+            }
 
-			value = DeserializeHelper(expectedType.GetElementType(), reader, expectedType, nestedObjectDeserializer);
-			return true;
-		}
+            var itemType = expectedType.GetElementType();
 
-		private static object DeserializeHelper(Type tItem, EventReader reader, Type expectedType, Func<EventReader, Type, object> nestedObjectDeserializer)
-		{
-			// Create typed list
-			IList items = (IList) typeof(List<object>).MakeGenericType( new Type[] { tItem } ).GetConstructor( new Type[] {} ).Invoke( new object[] {} );
+            var items = new ArrayList();
+            CollectionNodeDeserializer.DeserializeHelper(itemType, reader, expectedType, nestedObjectDeserializer, items, true);
 
-			GenericCollectionNodeDeserializer.DeserializeHelper(tItem, reader, expectedType, nestedObjectDeserializer, items);
+            var array = Array.CreateInstance(itemType, items.Count);
+            items.CopyTo(array, 0);
 
-			// Create typed array
-			ConstructorInfo arrayTypeConstructor = tItem.MakeArrayType().GetConstructor( new Type[] { typeof(int) } );
-			object[] constructorArgs = new object[] { items.Count };
-			object array = arrayTypeConstructor.Invoke(constructorArgs);
+            value = array;
+            return true;
+        }
 
-			// Assign from the list to the array
-			var asIList = (IList) array;
-			for (int i = 0; i < items.Count; i++) {
-				asIList[i] = items[i];
-			}
+        private sealed class ArrayList : IList
+        {
+            private object[] data;
+            private int count;
 
-			return array;
-		}
-	}
+            public ArrayList()
+            {
+                Clear();
+            }
+
+            public int Add(object value)
+            {
+                if (count == data.Length)
+                {
+                    Array.Resize(ref data, data.Length * 2);
+                }
+                data[count] = value;
+                return count++;
+            }
+
+            public void Clear()
+            {
+                data = new object[10];
+                count = 0;
+            }
+
+            public bool Contains(object value)
+            {
+                throw new NotImplementedException();
+            }
+
+            public int IndexOf(object value)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Insert(int index, object value)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool IsFixedSize
+            {
+                get { return false; }
+            }
+
+            public bool IsReadOnly
+            {
+                get { return false; }
+            }
+
+            public void Remove(object value)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void RemoveAt(int index)
+            {
+                throw new NotImplementedException();
+            }
+
+            public object this[int index]
+            {
+                get
+                {
+                    return data[index];
+                }
+                set
+                {
+                    data[index] = value;
+                }
+            }
+
+            public void CopyTo(Array array, int index)
+            {
+                Array.Copy(data, 0, array, index, count);
+            }
+
+            public int Count
+            {
+                get { return count; }
+            }
+
+            public bool IsSynchronized
+            {
+                get { return false; }
+            }
+
+            public object SyncRoot
+            {
+                get { return data; }
+            }
+
+            public IEnumerator GetEnumerator()
+            {
+                for (int i = 0; i < count; ++i)
+                {
+                    yield return data[i];
+                }
+            }
+        }
+    }
 }
 
