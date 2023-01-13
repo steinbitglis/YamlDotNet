@@ -1,4 +1,4 @@
-﻿// This file is part of YamlDotNet - A .NET library for YAML.
+// This file is part of YamlDotNet - A .NET library for YAML.
 // Copyright (c) Antoine Aubry and contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -86,8 +86,8 @@ namespace YamlDotNet.Serialization
             public int Matches(Type matchType)
             {
                 var currentPriority = 0;
-                var currentType = matchType;
-                while (currentType != null)
+                Type? currentType = matchType;
+                do
                 {
                     ++currentPriority;
                     if (currentType == RegisteredType)
@@ -95,7 +95,7 @@ namespace YamlDotNet.Serialization
                         return currentPriority;
                     }
                     currentType = currentType.BaseType();
-                }
+                } while (currentType != null);
 
                 if (matchType.GetInterfaces().Contains(RegisteredType))
                 {
